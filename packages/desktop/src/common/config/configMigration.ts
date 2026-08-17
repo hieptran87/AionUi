@@ -24,9 +24,11 @@ const LEGACY_CHANNEL_KEYS = [
   'assistant.weixin.agent',
   'assistant.wecom.defaultModel',
   'assistant.wecom.agent',
+  'assistant.zalo.defaultModel',
+  'assistant.zalo.agent',
 ] as const;
 
-const LEGACY_CHANNEL_PLATFORMS = ['telegram', 'lark', 'dingtalk', 'weixin', 'wecom'] as const;
+const LEGACY_CHANNEL_PLATFORMS = ['telegram', 'lark', 'dingtalk', 'weixin', 'wecom', 'zalo'] as const;
 
 type LegacyChannelConfigKey = (typeof LEGACY_CHANNEL_KEYS)[number];
 type LegacyChannelPlatform = (typeof LEGACY_CHANNEL_PLATFORMS)[number];
