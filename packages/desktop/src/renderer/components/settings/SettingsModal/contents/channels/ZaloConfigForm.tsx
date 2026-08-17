@@ -262,30 +262,28 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
     }
   };
 
-  const handleLoginQR = async () => {
+  const handleLoginQR = () => {
     setQrLoginState('loading_qr');
     setQrCodeData(null);
 
-    const loginUrl = `${getBaseUrl()}/api/channel/zalo/login`;
-    try {
-      const checkRes = await fetch(loginUrl, { method: 'GET', headers: { Accept: 'text/event-stream' } }).catch(
-        (): null => null
-      );
-      if (checkRes && checkRes.status === 404) {
-        setQrLoginState('error');
-        return;
-      }
-    } catch (error) {
-      console.warn('[ZaloConfig] Preflight check error:', error);
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
     }
 
+    const loginUrl = `${getBaseUrl()}/api/channel/zalo/login`;
     const es = new EventSource(loginUrl);
     eventSourceRef.current = es;
 
     es.addEventListener('qr', (e: MessageEvent) => {
-      const { qrcodeData } = JSON.parse(e.data) as { qrcodeData: string };
-      setQrCodeData(qrcodeData);
-      setQrLoginState('showing_qr');
+      try {
+        const { qrcodeData } = JSON.parse(e.data) as { qrcodeData: string };
+        if (qrcodeData) {
+          setQrCodeData(qrcodeData);
+          setQrLoginState('showing_qr');
+        }
+      } catch (err) {
+        console.error('[ZaloConfig] Failed to parse QR event data:', err);
+      }
     });
 
     es.addEventListener('scanned', () => {
@@ -294,25 +292,37 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
 
     es.addEventListener('done', (e: MessageEvent) => {
       es.close();
-      const { token, imei } = JSON.parse(e.data) as { token?: string; imei?: string };
-      if (token) setZaloToken(token);
-      if (imei) setZaloImei(imei);
-      handleAutoEnable().catch((err: unknown) => {
-        console.error('[ZaloConfig] Failed to auto-enable plugin:', err);
-      });
+      try {
+        const { token, imei } = JSON.parse(e.data) as { token?: string; imei?: string };
+        if (token) setZaloToken(token);
+        if (imei) setZaloImei(imei);
+        handleAutoEnable().catch((err: unknown) => {
+          console.error('[ZaloConfig] Failed to auto-enable plugin:', err);
+        });
+      } catch (err) {
+        console.error('[ZaloConfig] Failed to parse done event data:', err);
+      }
       setQrLoginState('connected');
     });
 
     es.addEventListener('error', () => {
       es.close();
-      setQrLoginState('error');
-      setQrCodeData(null);
+      setQrLoginState((prevState) => {
+        if (prevState === 'showing_qr' || prevState === 'scanned' || prevState === 'connected') {
+          return prevState;
+        }
+        return 'error';
+      });
     });
 
     es.onerror = () => {
       es.close();
-      setQrLoginState('error');
-      setQrCodeData(null);
+      setQrLoginState((prevState) => {
+        if (prevState === 'showing_qr' || prevState === 'scanned' || prevState === 'connected') {
+          return prevState;
+        }
+        return 'error';
+      });
     };
   };
 

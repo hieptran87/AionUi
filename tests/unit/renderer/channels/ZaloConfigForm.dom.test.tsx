@@ -76,7 +76,18 @@ describe('ZaloConfigForm', () => {
 
   it('handles 404 error on QR login endpoint gracefully and offers switch button', async () => {
     const fireEvent = (await import('@testing-library/react')).fireEvent;
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 404 }));
+
+    class MockEventSource {
+      onerror: (() => void) | null = null;
+      constructor() {
+        setTimeout(() => {
+          if (this.onerror) this.onerror();
+        }, 10);
+      }
+      addEventListener() {}
+      close() {}
+    }
+    vi.stubGlobal('EventSource', MockEventSource);
 
     render(<ZaloConfigForm pluginStatus={null} modelSelection={dummyModelSelection} onStatusChange={vi.fn()} />);
 
