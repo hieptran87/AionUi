@@ -1341,5 +1341,19 @@
     "clearConfirmContent": "Uygulama içi tarayıcıdaki tüm sitelerden çıkış yapılacak. Bu işlem geri alınamaz.",
     "clearSuccess": "Tarama verileri temizlendi",
     "clearFailed": "Tarama verileri temizlenemedi"
-  }
+  },
+  "channels.zaloTitle": "Zalo",
+  "channels.zaloDesc": "Chat with AionUi assistant via Zalo",
+  "zalo.credentialsRequired": "Please configure Zalo credentials or scan QR code",
+  "zalo.pluginEnabled": "Zalo channel enabled",
+  "zalo.pluginDisabled": "Zalo channel disabled",
+  "zalo.connectionSuccess": "Connected to Zalo!",
+  "zalo.connectionFailed": "Failed to connect to Zalo",
+  "zalo.sessionCookieLabel": "Session Cookie / Token (zpw_enk)",
+  "zalo.imeiLabel": "Device IMEI (Optional)",
+  "zalo.cookieAuth": "Cookie / Token",
+  "zalo.qrAuth": "Scan QR Code",
+  "zalo.qrConnected": "Zalo QR session connected!",
+  "zalo.qrPlaceholder": "QR code will appear here",
+  "zalo.qrInstructions": "Open Zalo mobile app and scan the QR code to log in."
 }
