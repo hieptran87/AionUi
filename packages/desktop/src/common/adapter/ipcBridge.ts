@@ -2065,7 +2065,11 @@ export const channel = {
   disablePlugin: httpPost<void, { plugin_id: string }>('/api/channel/plugins/disable'),
   testPlugin: httpPost<
     { success: boolean; bot_username?: string; error?: string },
-    { plugin_id: string; token: string; extra_config?: { app_id?: string; app_secret?: string } }
+    {
+      plugin_id: string;
+      token: string;
+      extra_config?: { app_id?: string; app_secret?: string; imei?: string; [key: string]: unknown };
+    }
   >('/api/channel/plugins/test'),
   getPendingPairings: withResponseMap(httpGet<RawPairing[], void>('/api/channel/pairings'), (raw) =>
     raw.map(toPairing)

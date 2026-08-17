@@ -14,7 +14,9 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     list: { invoke: vi.fn().mockResolvedValue([]) },
   },
   channel: {
-    getPlatformSettings: { invoke: vi.fn().mockResolvedValue({ platform: 'zalo', assistant: null, default_model: null }) },
+    getPlatformSettings: {
+      invoke: vi.fn().mockResolvedValue({ platform: 'zalo', assistant: null, default_model: null }),
+    },
     getPendingPairings: { invoke: vi.fn().mockResolvedValue([]) },
     getAuthorizedUsers: { invoke: vi.fn().mockResolvedValue([]) },
     setAssistantSetting: { invoke: vi.fn().mockResolvedValue(undefined) },
@@ -47,13 +49,7 @@ describe('ZaloConfigForm', () => {
   } as any;
 
   it('renders Zalo configuration fields and controls', () => {
-    render(
-      <ZaloConfigForm
-        pluginStatus={null}
-        modelSelection={dummyModelSelection}
-        onStatusChange={vi.fn()}
-      />
-    );
+    render(<ZaloConfigForm pluginStatus={null} modelSelection={dummyModelSelection} onStatusChange={vi.fn()} />);
 
     expect(screen.getByTestId('zalo-config-form')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('zpw_enk=...')).toBeInTheDocument();

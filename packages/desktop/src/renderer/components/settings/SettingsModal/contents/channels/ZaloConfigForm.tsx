@@ -308,12 +308,7 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
               <label className='text-12px font-500 text-t-primary mb-4px block'>
                 {t('settings.zalo.imeiLabel', 'Device IMEI (Optional)')}
               </label>
-              <Input
-                value={zaloImei}
-                onChange={setZaloImei}
-                placeholder='IMEI or Device ID'
-                disabled={tokenLocked}
-              />
+              <Input value={zaloImei} onChange={setZaloImei} placeholder='IMEI or Device ID' disabled={tokenLocked} />
             </div>
             <div className='flex items-center gap-12px pt-4px'>
               <Button type='primary' loading={testLoading} onClick={handleTestConnection} disabled={tokenLocked}>
@@ -428,11 +423,11 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
                 className='flex items-center justify-between p-12px bg-fill-2 rounded-8px border border-border-1'
               >
                 <div>
-                  <div className='text-14px font-500 text-t-primary'>
-                    {req.display_name || req.platformUserId}
-                  </div>
+                  <div className='text-14px font-500 text-t-primary'>{req.display_name || req.platformUserId}</div>
                   <div className='text-12px text-t-tertiary flex items-center gap-8px mt-2px'>
-                    <span>Code: <code className='font-mono font-600'>{req.code}</code></span>
+                    <span>
+                      Code: <code className='font-mono font-600'>{req.code}</code>
+                    </span>
                     <span>Expires in: {getRemainingTime(req.expiresAt)}</span>
                   </div>
                 </div>
@@ -481,19 +476,10 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
                 className='flex items-center justify-between p-12px bg-fill-2 rounded-8px border border-border-1'
               >
                 <div>
-                  <div className='text-14px font-500 text-t-primary'>
-                    {user.display_name || user.platformUserId}
-                  </div>
-                  <div className='text-12px text-t-tertiary mt-2px'>
-                    Authorized: {formatTime(user.authorizedAt)}
-                  </div>
+                  <div className='text-14px font-500 text-t-primary'>{user.display_name || user.platformUserId}</div>
+                  <div className='text-12px text-t-tertiary mt-2px'>Authorized: {formatTime(user.authorizedAt)}</div>
                 </div>
-                <Button
-                  status='danger'
-                  size='small'
-                  icon={<Delete />}
-                  onClick={() => handleRevokeUser(user.id)}
-                >
+                <Button status='danger' size='small' icon={<Delete />} onClick={() => handleRevokeUser(user.id)}>
                   {t('settings.assistant.revokeAccess', 'Revoke')}
                 </Button>
               </div>
