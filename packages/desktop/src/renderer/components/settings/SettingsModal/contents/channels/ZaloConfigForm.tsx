@@ -209,14 +209,26 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
     return () => unsubscribe();
   }, []);
 
-  const handleAutoEnable = async () => {
+  const handleAutoEnable = async (overrideToken?: string, overrideImei?: string) => {
+    const tokenToUse = (overrideToken ?? zaloToken).trim();
+    const imeiToUse = (overrideImei ?? zaloImei).trim();
+
     try {
-      await channel.enablePlugin.invoke({
-        plugin_id: 'zalo_default',
-        config: { token: zaloToken.trim(), imei: zaloImei.trim() },
-      });
+      try {
+        await channel.enablePlugin.invoke({
+          plugin_id: 'zalo',
+          config: { token: tokenToUse, imei: imeiToUse },
+        });
+      } catch (err: unknown) {
+        console.warn('[ZaloConfig] Failed with plugin_id zalo, trying zalo_default:', err);
+        await channel.enablePlugin.invoke({
+          plugin_id: 'zalo_default',
+          config: { token: tokenToUse, imei: imeiToUse },
+        });
+      }
+      Message.success(t('settings.zalo.pluginEnabled', 'Zalo channel enabled'));
       onStatusChange({
-        id: 'zalo_default',
+        id: 'zalo',
         type: 'zalo',
         name: 'Zalo',
         enabled: true,
@@ -239,11 +251,20 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
     setTokenTested(false);
     setTestedBotUsername(null);
     try {
-      const result = await channel.testPlugin.invoke({
-        plugin_id: 'zalo_default',
-        token: zaloToken.trim(),
-        extra_config: { imei: zaloImei.trim() },
-      });
+      let result;
+      try {
+        result = await channel.testPlugin.invoke({
+          plugin_id: 'zalo',
+          token: zaloToken.trim(),
+          extra_config: { imei: zaloImei.trim() },
+        });
+      } catch {
+        result = await channel.testPlugin.invoke({
+          plugin_id: 'zalo_default',
+          token: zaloToken.trim(),
+          extra_config: { imei: zaloImei.trim() },
+        });
+      }
 
       if (result.success) {
         setTokenTested(true);
@@ -293,10 +314,20 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
     es.addEventListener('done', (e: MessageEvent) => {
       es.close();
       try {
-        const { token, imei } = JSON.parse(e.data) as { token?: string; imei?: string };
+        const payload = JSON.parse(e.data) as {
+          token?: string;
+          imei?: string;
+          cookie?: string;
+          zaloCookies?: string;
+          zaloImei?: string;
+        };
+        const token = (payload.token || payload.zaloCookies || payload.cookie || '').trim();
+        const imei = (payload.imei || payload.zaloImei || '').trim();
+
         if (token) setZaloToken(token);
         if (imei) setZaloImei(imei);
-        handleAutoEnable().catch((err: unknown) => {
+
+        handleAutoEnable(token, imei).catch((err: unknown) => {
           console.error('[ZaloConfig] Failed to auto-enable plugin:', err);
         });
       } catch (err) {
