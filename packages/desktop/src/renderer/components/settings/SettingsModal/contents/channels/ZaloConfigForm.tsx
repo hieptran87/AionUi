@@ -12,7 +12,7 @@ import { getBaseUrl } from '@/common/adapter/httpBridge';
 import { resolveAssistantName } from '@/renderer/utils/model/assistantDisplay';
 import GoogleModelSelector from '@/renderer/pages/conversation/platforms/gemini/GoogleModelSelector';
 import type { GoogleModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGoogleModelSelection';
-import { Button, Dropdown, Empty, Input, Menu, Message, Spin, Tabs, Tooltip } from '@arco-design/web-react';
+import { Alert, Button, Dropdown, Empty, Input, Menu, Message, Spin, Tabs, Tooltip } from '@arco-design/web-react';
 import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,9 +79,9 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
   const [testedBotUsername, setTestedBotUsername] = useState<string | null>(null);
 
   // QR Login state machine
-  const [qrLoginState, setQrLoginState] = useState<'idle' | 'loading_qr' | 'showing_qr' | 'scanned' | 'connected'>(
-    pluginStatus?.hasToken && pluginStatus?.enabled ? 'connected' : 'idle'
-  );
+  const [qrLoginState, setQrLoginState] = useState<
+    'idle' | 'loading_qr' | 'showing_qr' | 'scanned' | 'connected' | 'error'
+  >(pluginStatus?.hasToken && pluginStatus?.enabled ? 'connected' : 'idle');
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -257,11 +257,24 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
     }
   };
 
-  const handleLoginQR = () => {
+  const handleLoginQR = async () => {
     setQrLoginState('loading_qr');
     setQrCodeData(null);
 
-    const es = new EventSource(`${getBaseUrl()}/api/channel/zalo/login`);
+    const loginUrl = `${getBaseUrl()}/api/channel/zalo/login`;
+    try {
+      const checkRes = await fetch(loginUrl, { method: 'GET', headers: { Accept: 'text/event-stream' } }).catch(
+        (): null => null
+      );
+      if (checkRes && checkRes.status === 404) {
+        setQrLoginState('error');
+        return;
+      }
+    } catch (error) {
+      console.warn('[ZaloConfig] Preflight check error:', error);
+    }
+
+    const es = new EventSource(loginUrl);
     eventSourceRef.current = es;
 
     es.addEventListener('qr', (e: MessageEvent) => {
@@ -287,14 +300,13 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
 
     es.addEventListener('error', () => {
       es.close();
-      Message.error(t('settings.zalo.connectionFailed', 'Failed to connect to Zalo'));
-      setQrLoginState('idle');
+      setQrLoginState('error');
       setQrCodeData(null);
     });
 
     es.onerror = () => {
       es.close();
-      setQrLoginState('idle');
+      setQrLoginState('error');
       setQrCodeData(null);
     };
   };
@@ -377,7 +389,20 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
         </Tabs.TabPane>
         <Tabs.TabPane key='qr' title={t('settings.zalo.qrAuth', 'Scan QR Code')}>
           <div className='flex flex-col items-center justify-center p-16px text-center space-y-12px'>
-            {qrLoginState === 'connected' ? (
+            {qrLoginState === 'error' ? (
+              <div className='flex flex-col items-center justify-center gap-12px max-w-360px mx-auto py-8px'>
+                <Alert
+                  type='warning'
+                  content={t(
+                    'settings.zalo.qrNotSupported',
+                    'QR Code login endpoint is currently unavailable. Please use Cookie / Token login instead.'
+                  )}
+                />
+                <Button type='primary' onClick={() => setAuthMode('token')}>
+                  {t('settings.zalo.switchToCookie', 'Switch to Cookie / Token Login')}
+                </Button>
+              </div>
+            ) : qrLoginState === 'connected' ? (
               <div className='text-success flex items-center gap-8px text-14px font-500'>
                 <CheckOne theme='filled' className='text-18px' />
                 {t('settings.zalo.qrConnected', 'Zalo QR session connected!')}

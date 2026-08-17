@@ -1358,5 +1358,9 @@
   "zalo.qrAuth": "Scan QR Code",
   "zalo.qrConnected": "Zalo QR session connected!",
   "zalo.qrPlaceholder": "QR code will appear here",
-  "zalo.qrInstructions": "Open Zalo mobile app and scan the QR code to log in."
+  "zalo.qrInstructions": "Open Zalo mobile app and scan the QR code to log in.",
+  "zalo.qrNotSupported": "QR Code login endpoint is currently unavailable. Please use Cookie / Token login instead.",
+  "zalo.switchToCookie": "Switch to Cookie / Token Login",
+  "zalo.scanned": "Scanned, waiting for confirmation...",
+  "zalo.loginButton": "Scan to Login"
 }

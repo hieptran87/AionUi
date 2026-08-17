@@ -73,4 +73,26 @@ describe('ZaloConfigForm', () => {
     const scanBtn = screen.getByRole('button', { name: /Scan to Login/i });
     expect(scanBtn).toBeInTheDocument();
   });
+
+  it('handles 404 error on QR login endpoint gracefully and offers switch button', async () => {
+    const fireEvent = (await import('@testing-library/react')).fireEvent;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 404 }));
+
+    render(<ZaloConfigForm pluginStatus={null} modelSelection={dummyModelSelection} onStatusChange={vi.fn()} />);
+
+    const qrTab = screen.getByText('Scan QR Code');
+    fireEvent.click(qrTab);
+
+    const scanBtn = screen.getByRole('button', { name: /Scan to Login/i });
+    fireEvent.click(scanBtn);
+
+    const switchBtn = await screen.findByRole('button', { name: /Switch to Cookie \/ Token Login/i });
+    expect(switchBtn).toBeInTheDocument();
+    fireEvent.click(switchBtn);
+
+    // Expect input placeholder to be back in view
+    expect(screen.getByPlaceholderText('zpw_enk=...')).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
+  });
 });
