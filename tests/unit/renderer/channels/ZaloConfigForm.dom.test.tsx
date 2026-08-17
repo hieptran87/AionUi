@@ -38,6 +38,10 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+vi.mock('@/common/adapter/httpBridge', () => ({
+  getBaseUrl: () => 'http://localhost:3000',
+}));
+
 vi.mock('@/renderer/pages/conversation/platforms/gemini/GoogleModelSelector', () => ({
   default: () => <div data-testid='google-model-selector'>GoogleModelSelector</div>,
 }));
@@ -54,5 +58,19 @@ describe('ZaloConfigForm', () => {
     expect(screen.getByTestId('zalo-config-form')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('zpw_enk=...')).toBeInTheDocument();
     expect(screen.getByText('Test & Connect')).toBeInTheDocument();
+  });
+
+  it('renders QR code login controls and handles QR tab interaction', async () => {
+    const fireEvent = (await import('@testing-library/react')).fireEvent;
+
+    render(<ZaloConfigForm pluginStatus={null} modelSelection={dummyModelSelection} onStatusChange={vi.fn()} />);
+
+    const qrTab = screen.getByText('Scan QR Code');
+    expect(qrTab).toBeInTheDocument();
+    fireEvent.click(qrTab);
+
+    // Expect scan to login button
+    const scanBtn = screen.getByRole('button', { name: /Scan to Login/i });
+    expect(scanBtn).toBeInTheDocument();
   });
 });

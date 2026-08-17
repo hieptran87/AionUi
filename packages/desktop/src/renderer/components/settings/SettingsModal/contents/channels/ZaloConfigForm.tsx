@@ -8,12 +8,13 @@ import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from 
 import { assistants, channel } from '@/common/adapter/ipcBridge';
 import { isAionrsAssistant, type Assistant } from '@/common/types/agent/assistantTypes';
 import { resolveLocaleKey } from '@/common/utils';
+import { getBaseUrl } from '@/common/adapter/httpBridge';
 import { resolveAssistantName } from '@/renderer/utils/model/assistantDisplay';
 import GoogleModelSelector from '@/renderer/pages/conversation/platforms/gemini/GoogleModelSelector';
 import type { GoogleModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGoogleModelSelection';
 import { Button, Dropdown, Empty, Input, Menu, Message, Spin, Tabs, Tooltip } from '@arco-design/web-react';
 import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -78,10 +79,19 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
   const [testedBotUsername, setTestedBotUsername] = useState<string | null>(null);
 
   // QR Login state machine
-  const [qrLoginState, setQrLoginState] = useState<'idle' | 'loading_qr' | 'showing_qr' | 'connected'>(
+  const [qrLoginState, setQrLoginState] = useState<'idle' | 'loading_qr' | 'showing_qr' | 'scanned' | 'connected'>(
     pluginStatus?.hasToken && pluginStatus?.enabled ? 'connected' : 'idle'
   );
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Close EventSource on unmount to prevent connection leaks
+  useEffect(() => {
+    return () => {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
 
   // Pairing & Authorized Users state
   const [pairingLoading, setPairingLoading] = useState(false);
@@ -247,6 +257,48 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
     }
   };
 
+  const handleLoginQR = () => {
+    setQrLoginState('loading_qr');
+    setQrCodeData(null);
+
+    const es = new EventSource(`${getBaseUrl()}/api/channel/zalo/login`);
+    eventSourceRef.current = es;
+
+    es.addEventListener('qr', (e: MessageEvent) => {
+      const { qrcodeData } = JSON.parse(e.data) as { qrcodeData: string };
+      setQrCodeData(qrcodeData);
+      setQrLoginState('showing_qr');
+    });
+
+    es.addEventListener('scanned', () => {
+      setQrLoginState('scanned');
+    });
+
+    es.addEventListener('done', (e: MessageEvent) => {
+      es.close();
+      const { token, imei } = JSON.parse(e.data) as { token?: string; imei?: string };
+      if (token) setZaloToken(token);
+      if (imei) setZaloImei(imei);
+      handleAutoEnable().catch((err: unknown) => {
+        console.error('[ZaloConfig] Failed to auto-enable plugin:', err);
+      });
+      setQrLoginState('connected');
+    });
+
+    es.addEventListener('error', () => {
+      es.close();
+      Message.error(t('settings.zalo.connectionFailed', 'Failed to connect to Zalo'));
+      setQrLoginState('idle');
+      setQrCodeData(null);
+    });
+
+    es.onerror = () => {
+      es.close();
+      setQrLoginState('idle');
+      setQrCodeData(null);
+    };
+  };
+
   const handleApprovePairing = async (code: string) => {
     try {
       await channel.approvePairing.invoke({ code });
@@ -330,18 +382,46 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
                 <CheckOne theme='filled' className='text-18px' />
                 {t('settings.zalo.qrConnected', 'Zalo QR session connected!')}
               </div>
-            ) : (
+            ) : qrLoginState === 'loading_qr' ? (
+              <div className='w-160px h-160px bg-fill-2 flex flex-col items-center justify-center rounded-8px gap-8px text-12px text-t-tertiary'>
+                <Spin size={20} />
+                <span>{t('common.loading', 'Loading QR Code...')}</span>
+              </div>
+            ) : qrLoginState === 'showing_qr' || qrLoginState === 'scanned' ? (
               <>
                 {qrCodeData ? (
-                  <QRCodeSVG value={qrCodeData} size={160} />
+                  qrCodeData.startsWith('data:') ? (
+                    <img src={qrCodeData} className='w-160px h-160px object-contain' alt='Zalo QR Code' />
+                  ) : (
+                    <QRCodeSVG value={qrCodeData} size={160} />
+                  )
                 ) : (
                   <div className='w-160px h-160px bg-fill-2 flex items-center justify-center rounded-8px text-12px text-t-tertiary'>
                     {t('settings.zalo.qrPlaceholder', 'QR code will appear here')}
                   </div>
                 )}
-                <div className='text-12px text-t-secondary'>
+                {qrLoginState === 'scanned' ? (
+                  <div className='flex items-center gap-6px text-13px text-t-secondary'>
+                    <Spin size={14} />
+                    <span>{t('settings.zalo.scanned', 'Scanned, waiting for confirmation...')}</span>
+                  </div>
+                ) : (
+                  <div className='text-12px text-t-secondary'>
+                    {t('settings.zalo.qrInstructions', 'Open Zalo mobile app and scan the QR code to log in.')}
+                  </div>
+                )}
+                <Button size='small' icon={<Refresh />} onClick={handleLoginQR}>
+                  {t('common.refresh', 'Refresh QR Code')}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className='text-12px text-t-secondary mb-8px'>
                   {t('settings.zalo.qrInstructions', 'Open Zalo mobile app and scan the QR code to log in.')}
                 </div>
+                <Button type='primary' onClick={handleLoginQR}>
+                  {t('settings.zalo.loginButton', 'Scan to Login')}
+                </Button>
               </>
             )}
           </div>
