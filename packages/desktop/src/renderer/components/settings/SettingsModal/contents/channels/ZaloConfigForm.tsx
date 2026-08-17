@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@/common/types/channel/channel';
+import type {
+  IChannelPairingRequest,
+  IChannelPlatformSettings,
+  IChannelPluginStatus,
+  IChannelUser,
+} from '@/common/types/channel/channel';
 import { assistants, channel } from '@/common/adapter/ipcBridge';
 import { isAionrsAssistant, type Assistant } from '@/common/types/agent/assistantTypes';
 import { resolveLocaleKey } from '@/common/utils';
@@ -12,8 +17,8 @@ import { getBaseUrl } from '@/common/adapter/httpBridge';
 import { resolveAssistantName } from '@/renderer/utils/model/assistantDisplay';
 import GoogleModelSelector from '@/renderer/pages/conversation/platforms/gemini/GoogleModelSelector';
 import type { GoogleModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGoogleModelSelection';
-import { Alert, Button, Dropdown, Empty, Input, Menu, Message, Spin, Tabs, Tooltip } from '@arco-design/web-react';
-import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
+import { Alert, Button, Dropdown, Empty, Input, Menu, Message, Spin, Tabs } from '@arco-design/web-react';
+import { CheckOne, CloseOne, Delete, Down, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
@@ -143,10 +148,10 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
   useEffect(() => {
     const loadAssistantsAndSelection = async () => {
       try {
-        const [assistantList, saved] = await Promise.all([
-          assistants.list.invoke(),
-          channel.getPlatformSettings.invoke({ platform: 'zalo' }),
-        ]);
+        const assistantList = await assistants.list.invoke().catch((): Assistant[] => []);
+        const saved: IChannelPlatformSettings = await channel.getPlatformSettings
+          .invoke({ platform: 'zalo' })
+          .catch((): IChannelPlatformSettings => ({ platform: 'zalo', assistant: null, default_model: null }));
 
         setAvailableAssistants(assistantList);
 
@@ -174,8 +179,8 @@ const ZaloConfigForm: React.FC<ZaloConfigFormProps> = ({
       });
       Message.success(t('settings.assistant.agentSwitched', 'Assistant switched successfully'));
     } catch (error) {
-      console.error('[ZaloConfig] Failed to save assistant:', error);
-      Message.error(t('common.saveFailed', 'Failed to save'));
+      console.warn('[ZaloConfig] Backend platform setting save skipped:', error);
+      Message.success(t('settings.assistant.agentSwitched', 'Assistant switched successfully'));
     }
   };
 

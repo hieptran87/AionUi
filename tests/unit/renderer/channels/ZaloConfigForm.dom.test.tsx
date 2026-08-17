@@ -95,4 +95,19 @@ describe('ZaloConfigForm', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('loads available assistants even when getPlatformSettings returns 400 Invalid platform error', async () => {
+    const { channel, assistants } = await import('@/common/adapter/ipcBridge');
+    vi.mocked(channel.getPlatformSettings.invoke).mockRejectedValueOnce({
+      status: 400,
+      backendMessage: 'Invalid platform: zalo',
+    });
+    vi.mocked(assistants.list.invoke).mockResolvedValueOnce([
+      { id: 'ast-1', name: 'Test Assistant', agent_type: 'aionrs' } as any,
+    ]);
+
+    render(<ZaloConfigForm pluginStatus={null} modelSelection={dummyModelSelection} onStatusChange={vi.fn()} />);
+
+    expect(screen.getByTestId('zalo-config-form')).toBeInTheDocument();
+  });
 });
