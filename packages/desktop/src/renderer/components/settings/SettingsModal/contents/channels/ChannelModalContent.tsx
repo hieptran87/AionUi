@@ -25,8 +25,9 @@ import SlackConfigForm from './SlackConfigForm';
 import TelegramConfigForm from './TelegramConfigForm';
 import WeixinConfigForm from './WeixinConfigForm';
 import WecomConfigForm from './WecomConfigForm';
+import ZaloConfigForm from './ZaloConfigForm';
 
-type ChannelSettingsPlatform = 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' | 'wecom';
+type ChannelSettingsPlatform = 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' | 'wecom' | 'zalo';
 
 type ExtensionFieldType = 'text' | 'password' | 'select' | 'number' | 'boolean';
 
@@ -41,7 +42,7 @@ type ExtensionFieldSchema = {
 
 type ExtensionFieldValues = Record<string, Record<string, string | number | boolean>>;
 
-const BUILTIN_CHANNEL_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'weixin', 'wecom', 'slack', 'discord']);
+const BUILTIN_CHANNEL_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'weixin', 'wecom', 'slack', 'discord', 'zalo']);
 
 /**
  * Internal hook: wraps useGoogleModelSelection with backend-owned channel settings
@@ -152,6 +153,7 @@ const ChannelModalContent: React.FC = () => {
   const [dingtalkPluginStatus, setDingtalkPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [weixinPluginStatus, setWeixinPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [wecomPluginStatus, setWecomPluginStatus] = useState<IChannelPluginStatus | null>(null);
+  const [zaloPluginStatus, setZaloPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [enableLoading, setEnableLoading] = useState(false);
   const [slackEnableLoading, setSlackEnableLoading] = useState(false);
   const [discordEnableLoading, setDiscordEnableLoading] = useState(false);
@@ -159,6 +161,7 @@ const ChannelModalContent: React.FC = () => {
   const [dingtalkEnableLoading, setDingtalkEnableLoading] = useState(false);
   const [weixinEnableLoading, setWeixinEnableLoading] = useState(false);
   const [wecomEnableLoading, setWecomEnableLoading] = useState(false);
+  const [zaloEnableLoading, setZaloEnableLoading] = useState(false);
   const [extensionStatuses, setExtensionStatuses] = useState<Record<string, IChannelPluginStatus>>({});
   const [extensionLoadingMap, setExtensionLoadingMap] = useState<Record<string, boolean>>({});
   const [extensionFieldValues, setExtensionFieldValues] = useState<ExtensionFieldValues>({});
@@ -173,6 +176,8 @@ const ChannelModalContent: React.FC = () => {
   // Track the Bot Token entered in DiscordConfigForm so the toggle handler can use it
   const discordTokenRef = React.useRef<string>('');
 
+  const zaloTokenRef = React.useRef<string>('');
+
   // Collapse state - true means collapsed (closed), false means expanded (open)
   const [collapseKeys, setCollapseKeys] = useState<Record<string, boolean>>({
     telegram: true, // Default to collapsed
@@ -182,6 +187,7 @@ const ChannelModalContent: React.FC = () => {
     dingtalk: true,
     weixin: true,
     wecom: true,
+    zalo: true,
   });
 
   // Model selection state — uses unified hook with backend-owned channel settings
@@ -192,6 +198,7 @@ const ChannelModalContent: React.FC = () => {
   const dingtalkModelSelection = useChannelModelSelection('dingtalk');
   const weixinModelSelection = useChannelModelSelection('weixin');
   const wecomModelSelection = useChannelModelSelection('wecom');
+  const zaloModelSelection = useChannelModelSelection('zalo');
 
   // Load plugin status
   const loadPluginStatus = useCallback(async () => {
@@ -206,6 +213,7 @@ const ChannelModalContent: React.FC = () => {
         const dingtalkPlugin = plugins.find((p) => p.type === 'dingtalk');
         const weixinPlugin = plugins.find((p) => p.type === 'weixin');
         const wecomPlugin = plugins.find((p) => p.type === 'wecom');
+        const zaloPlugin = plugins.find((p) => p.type === 'zalo' || p.type === 'zalo_default');
         const extensionPlugins = plugins.filter((p) => !BUILTIN_CHANNEL_TYPES.has(p.type));
 
         setPluginStatus(telegramPlugin || null);
@@ -215,6 +223,7 @@ const ChannelModalContent: React.FC = () => {
         setDingtalkPluginStatus(dingtalkPlugin || null);
         setWeixinPluginStatus(weixinPlugin || null);
         setWecomPluginStatus(wecomPlugin || null);
+        setZaloPluginStatus(zaloPlugin || null);
         setExtensionStatuses(() => {
           const next: Record<string, IChannelPluginStatus> = {};
           for (const plugin of extensionPlugins) {
@@ -284,6 +293,8 @@ const ChannelModalContent: React.FC = () => {
         setWeixinPluginStatus(status);
       } else if (status.type === 'wecom') {
         setWecomPluginStatus(status);
+      } else if (status.type === 'zalo') {
+        setZaloPluginStatus(status);
       } else if (!BUILTIN_CHANNEL_TYPES.has(status.type)) {
         setExtensionStatuses((prev) => ({
           ...prev,
@@ -864,6 +875,27 @@ const ChannelModalContent: React.FC = () => {
       ),
     };
 
+    const zaloChannel: ChannelConfig = {
+      id: 'zalo',
+      title: t('settings.channels.zaloTitle', 'Zalo'),
+      description: t('settings.channels.zaloDesc', 'Chat with AionUi assistant via Zalo'),
+      status: 'active',
+      enabled: zaloPluginStatus?.enabled || false,
+      disabled: zaloEnableLoading,
+      is_connected: zaloPluginStatus?.connected || false,
+      defaultModel: zaloModelSelection.current_model?.use_model,
+      content: (
+        <ZaloConfigForm
+          pluginStatus={zaloPluginStatus}
+          modelSelection={zaloModelSelection}
+          onStatusChange={setZaloPluginStatus}
+          onTokenChange={(token) => {
+            zaloTokenRef.current = token;
+          }}
+        />
+      ),
+    };
+
     const extensionChannels: ChannelConfig[] = Object.values(extensionStatuses)
       .toSorted((a, b) => a.name.localeCompare(b.name))
       .map((status) => ({
@@ -891,6 +923,7 @@ const ChannelModalContent: React.FC = () => {
       dingtalkChannel,
       weixinChannel,
       wecomChannel,
+      zaloChannel,
       ...extensionChannels,
     ];
   }, [

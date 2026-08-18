@@ -245,6 +245,51 @@ describe('configMigration', () => {
       });
     });
 
+    it('migrates legacy Zalo channel settings through dedicated channel APIs', async () => {
+      const legacyChannelAgent = {
+        assistant_id: 'bare_aionrs',
+        backend: 'aionrs',
+        name: 'Zalo Assistant',
+      };
+      const configFile: ConfigFile = {
+        get: vi.fn((key: string) => {
+          if (key === 'assistant.zalo.agent') return Promise.resolve(legacyChannelAgent);
+          if (key === 'assistant.zalo.defaultModel') {
+            return Promise.resolve({ id: 'provider_zalo', use_model: 'gemini-2.5-flash' });
+          }
+          return Promise.reject(new Error('not found'));
+        }),
+        set: vi.fn(),
+      };
+      (httpRequest as ReturnType<typeof vi.fn>).mockImplementation((method: string) => {
+        if (method === 'GET') return Promise.resolve({});
+        return Promise.resolve(undefined);
+      });
+      (ipcBridge.assistants.list.invoke as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: 'bare_aionrs',
+          source: 'generated',
+          agent_id: 'agent-aionrs',
+          agent: { type: 'acp', source: 'builtin', acp_backend: 'aionrs' },
+        },
+      ]);
+      vi.spyOn(console, 'info').mockImplementation(() => {});
+
+      await migrateConfigStorage(configFile);
+
+      expect(ipcBridge.channel.setAssistantSetting.invoke).toHaveBeenCalledWith({
+        platform: 'zalo',
+        assistant: { assistant_id: 'bare_aionrs' },
+      });
+      expect(ipcBridge.channel.setDefaultModelSetting.invoke).toHaveBeenCalledWith({
+        platform: 'zalo',
+        default_model: { id: 'provider_zalo', use_model: 'gemini-2.5-flash' },
+      });
+      expect(ipcBridge.channel.syncChannelSettings.invoke).toHaveBeenCalledWith({
+        platform: 'zalo',
+      });
+    });
+
     it('preserves backend channel settings and skips rewriting existing values', async () => {
       const configFile: ConfigFile = {
         get: vi.fn((key: string) => {

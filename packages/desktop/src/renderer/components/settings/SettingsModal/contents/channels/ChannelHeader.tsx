@@ -11,6 +11,7 @@ import ChannelSlackLogo from '@/renderer/assets/channel-logos/slack.svg';
 import ChannelTelegramLogo from '@/renderer/assets/channel-logos/telegram.svg';
 import ChannelWecomLogo from '@/renderer/assets/channel-logos/wecom.svg';
 import ChannelWeixinLogo from '@/renderer/assets/channel-logos/weixin.svg';
+import ChannelZaloLogo from '@/renderer/assets/channel-logos/zalo.svg';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { Switch, Tag } from '@arco-design/web-react';
 import React from 'react';
@@ -32,6 +33,7 @@ const ChannelHeader: React.FC<ChannelHeaderProps> = ({ channel, onToggleEnabled 
     discord: { src: ChannelDiscordLogo, alt: 'Discord' },
     weixin: { src: ChannelWeixinLogo, alt: 'WeChat' },
     wecom: { src: ChannelWecomLogo, alt: 'WeCom' },
+    zalo: { src: ChannelZaloLogo, alt: 'Zalo' },
   };
   const builtinLogo = channelLogoMap[channel.id];
   // Extension channels may provide a custom icon via ChannelConfig
